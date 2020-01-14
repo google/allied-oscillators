@@ -32,4 +32,5 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 
 ## License
 
-This project is licensed under the Apache License, version 2.0 - see [LICENSE](LICENSE) for details
+This project is licensed under the Apache License, version 2.0 - see [LICENSE](LICENSE) for details.
+This is not an officially supported Google product.
