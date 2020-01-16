@@ -47,6 +47,7 @@ class SinusoidProcessor extends AudioWorkletProcessor {
     } else {
       this.frequency = frequencyForKey(key)
       this.phase_per_step = (2 * Math.PI * this.frequency) / sampleRate
+    }
   }
   
   onmessage (e) {
