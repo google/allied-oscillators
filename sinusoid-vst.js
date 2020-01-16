@@ -12,11 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+function frequencyForKey(key) {
+  const exponent = (key - 69) / 12
+  return 440 * Math.pow(2, exponent)
+}
+
 class SinusoidProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super()
-    this.phase = 0
-    this.frequency = -1
+    this.updateFrequency(-1)
     this.port.onmessage = this.onmessage.bind(this)
   }
   
@@ -35,9 +39,14 @@ class SinusoidProcessor extends AudioWorkletProcessor {
     return true
   }
   
-  updateFrequency (f) {
-    this.frequency = f
-    this.phase_per_step = (2 * Math.PI * this.frequency) / sampleRate
+  updateFrequency (key) {
+    if (key === -1) {
+      this.phase = 0
+      this.frequency = -1
+      this.phase_per_step = 0
+    } else {
+      this.frequency = frequencyForKey(key)
+      this.phase_per_step = (2 * Math.PI * this.frequency) / sampleRate
   }
   
   onmessage (e) {

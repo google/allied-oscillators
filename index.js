@@ -209,11 +209,6 @@ async function createBuiltinSynth() {
   
   await maybeInitializeWebAudio();
   
-  function frequencyForKey(key) {
-    const exponent = (key - 69) / 12
-    return 440 * Math.pow(2, exponent)
-  }
-
   function handleKeyPress(key, velocity) {
     if (velocity != 0) {
       console.log(
@@ -223,8 +218,8 @@ async function createBuiltinSynth() {
           velocity.toString()
       );
       if (node != null) {
-        this.currentFrequency = frequencyForKey(key)
-        node.port.postMessage(this.currentFrequency)
+        this.currentKey = key
+        node.port.postMessage(this.currentKey)
       }
     } else {
       console.log(
@@ -233,9 +228,9 @@ async function createBuiltinSynth() {
         " released"
       );
       if (node != null) {
-        if (this.currentFrequency == frequencyForKey(key)) {
-          this.currentFrequency = -1
-          node.port.postMessage(this.currentFrequency)
+        if (this.currentKey == key) {
+          this.currentKey = -1
+          node.port.postMessage(this.currentKey)
         }
       }
     }
