@@ -99,15 +99,25 @@ async function createVirtualKeyboard() {
   }
   
   function makeMouseDownHandler(key) {
-    return function() {
+    return function(e) {
       dispatchMIDI(input, makeMIDIData(channel, key, 64))
     }
   }
 
   function makeMouseUpHandler(key) {
-    return function() {
+    return function(e) {
       dispatchMIDI(input, makeMIDIData(channel, key, 0))
     }
+  }
+
+  function contextMenuHandler(e) {
+    if(e.preventDefault != undefined) {
+      e.preventDefault()
+    }
+    if(e.stopPropagation != undefined) {
+      e.stopPropagation()
+    }
+    return false
   }
 
   for (var i = 0; i < keys.length; ++i) {
@@ -135,8 +145,14 @@ async function createVirtualKeyboard() {
     key.style.backgroundColor = isWhite[i] ? "white" : "black"
     key.style.zIndex = isWhite[i] ? 0 : 1
 
-    key.onmousedown = makeMouseDownHandler(57 + i)
-    key.onmouseup = makeMouseUpHandler(57 + i)
+    const downHandler = makeMouseDownHandler(57 + i)
+    const upHandler = makeMouseUpHandler(57+ i)
+
+    key.addEventListener('mousedown', downHandler)
+    key.addEventListener('mouseup', upHandler)
+    key.addEventListener('touchstart', downHandler)
+    key.addEventListener('touchend', upHandler)
+    key.addEventListener('contextmenu', contextMenuHandler)
   }
     
   function keyDown(e) {
