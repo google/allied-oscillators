@@ -57,9 +57,6 @@ function registerOutput(name, fn) {
 }
 
 function dispatchMIDI(input_uid, data) {
-  console.log("dispatchMIDI")
-  console.log(input_uid)
-  console.log(input_select.options[input_select.selectedIndex].uid)
   if (input_select.options.length && input_select.selectedIndex >= 0 &&
       output_select.options.length && output_select.selectedIndex >= 0 &&
       input_select.options[input_select.selectedIndex].uid == input_uid) {
@@ -209,33 +206,6 @@ async function createBuiltinSynth() {
   
   await maybeInitializeWebAudio();
   
-  function handleKeyPress(key, velocity) {
-    if (velocity != 0) {
-      console.log(
-        "key " +
-          key.toString() +
-          " pressed with velocity " +
-          velocity.toString()
-      );
-      if (node != null) {
-        this.currentKey = key
-        node.port.postMessage(this.currentKey)
-      }
-    } else {
-      console.log(
-        "key " +
-        key.toString() +
-        " released"
-      );
-      if (node != null) {
-        if (this.currentKey == key) {
-          this.currentKey = -1
-          node.port.postMessage(this.currentKey)
-        }
-      }
-    }
-  }
-
   function handleMIDIMessage(data) {
     if (data.length === 0) {
       return;
@@ -249,13 +219,12 @@ async function createBuiltinSynth() {
       return;
     }
     if ((data[0] & 0xf0) === 0x90) {
-      // note on
       if (data.length != 3) {
         return;
       }
-      key = data[1];
-      velocity = data[2];
-      handleKeyPress(key, velocity)
+      if (node != null) {
+        node.port.postMessage(data)
+      }
     }
   }
   

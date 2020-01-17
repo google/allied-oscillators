@@ -18,40 +18,50 @@ function frequencyForKey(key) {
 }
 
 class SinusoidProcessor extends AudioWorkletProcessor {
-  constructor(options) {
+  constructor (options) {
     super()
-    this.updateFrequency(-1)
+    this.poly = {}
     this.port.onmessage = this.onmessage.bind(this)
+    this.polyphony = 8
+    this.gain = 0.8 / this.polyphony
   }
   
   process (inputs, outputs, parameters) {
     const output = outputs[0]
-    output.forEach(channel => {
-      for (let i = 0; i < channel.length; ++i) {
-        if (this.frequency === -1) {
-          channel[i] = 0
-        } else {
-          channel[i] = Math.cos(this.phase)
-          this.phase += this.phase_per_step
+    const gain = this.gain
+    const poly = this.poly
+    Object.keys(poly).forEach(key => {
+      const state = poly[key]
+      output.forEach(channel => {
+        for (let i = 0; i < channel.length; ++i) {
+          channel[i] += (gain * Math.cos(state.phase))
+          state.phase += state.phase_per_step
         }
-      }
-    })
+      })
+    });
     return true
   }
   
-  updateFrequency (key) {
-    if (key === -1) {
-      this.phase = 0
-      this.frequency = -1
-      this.phase_per_step = 0
+  handleKey (key, velocity) {
+    if (velocity == 0) {
+      delete this.poly[key]
+    } else if (Object.keys(this.poly).length >= this.polyphony && !(key in this.poly)) {
+      return
     } else {
-      this.frequency = frequencyForKey(key)
-      this.phase_per_step = (2 * Math.PI * this.frequency) / sampleRate
+      const frequency = frequencyForKey(key)
+      this.poly[key] = {
+        'velocity'       : velocity,
+        'phase'          : 0,
+        'phase_per_step' : (2 * Math.PI * frequency) / sampleRate
+      }
     }
   }
-  
+
   onmessage (e) {
-    this.updateFrequency(e.data)
+    const data = e.data
+    if ((data[0] & 0xf0) == 0x90 && data.length == 3) {
+      this.handleKey(data[1], data[2])
+    }
   }
 }
 
