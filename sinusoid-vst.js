@@ -42,6 +42,9 @@ function fractionOfDuration(elapsed, duration) {
 // applySlope doesn't call fractionOfDuration because the processor needs
 // to know it to advance the state of the envelope
 function applySlope(start_level, end_level, fraction) {
+  if (fraction >= 1) {
+    return end_level;
+  }
   return start_level + ((end_level - start_level) * fraction);
 }
 
@@ -52,80 +55,92 @@ const ADSR = Object.freeze({
   'release' : 72
 });
 
-function initialADSRState(adsr) {
-  if (adsr[ADSR.attack] != 0) {
-    return ADSR.attack;
-  } else if (adsr[ADSR.decay] != 0) {
-    return ADSR.decay;
-  } else {
-    return ADSR.sustain;
+class ADSRGain {
+  constructor(params) {
+    this.params = params;
+    this.setInitialState();
   }
-}
 
-function nextADSRState(adsr, state) {
-  switch (state) {
-    case ADSR.attack:
-      if (adsr[ADSR.decay] == 0) {
+  setState(state) {
+    this.state = state;
+    this.start_gain = this.gain;
+    this.elapsed = 0;
+  }
+
+  setInitialState() {
+    if (this.params[ADSR.attack] != 0) {
+      this.setState(ADSR.attack);
+    } else if (adsr[ADSR.decay] != 0) {
+      this.setState(ADSR.decay);
+    } else {
+      this.setState(ADSR.sustain);
+    }
+  }
+
+  nextState() {
+    switch (this.state) {
+      case ADSR.attack:
+        if (this.params[ADSR.decay] == 0) {
+          return ADSR.sustain;
+        }
+        return ADSR.decay;
+      case ADSR.decay:
         return ADSR.sustain;
+      case ADSR.sustain:
+        return ADSR.sustain;
+      case ADSR.release:
+        return ADSR.release;
+      default:
+        throw "Unhandled state";
+    }
+  }
+
+  levelPair() {
+    switch (this.state) {
+      case ADSR.attack:
+        return [0, 1];
+      case ADSR.decay:
+        return [1, this.params[ADSR.sustain]];
+      case ADSR.sustain:
+        return [this.params[ADSR.sustain], this.params[ADSR.sustain]];
+      case ADSR.release:
+        return [this.start_gain, 0];
+      default:
+        throw "Unhandled state";
+    }
+  }
+
+  updateGain() {
+    const duration =
+      (this.state == ADSR.sustain) ? 0 : this.params[this.state];
+
+    var fraction = fractionOfDuration(this.elapsed, duration);
+
+    if (fraction >= 1) {
+      const new_state = this.nextState();
+      if (new_state != this.state) {
+        this.setState(new_state);
+        fraction = 0;
       }
-      return ADSR.decay;
-    case ADSR.decay:
-      return ADSR.sustain;
-    case ADSR.sustain:
-      return ADSR.sustain;
-    case ADSR.release:
-      return ADSR.release;
-    default:
-      throw "Unhandled state";
-  }
-}
+    }
 
-function levelPair(voice, adsr) {
-  switch (voice.state) {
-    case ADSR.attack:
-      return [0.0, 1.0];
-    case ADSR.decay:
-      return [1.0, adsr[ADSR.sustain]];
-    case ADSR.sustain:
-      return [adsr[ADSR.sustain], adsr[ADSR.sustain]];
-    case ADSR.release:
-      return [voice.start_gain, 0.0];
-    default:
-      throw "Unhandled state";
-  }
-}
+    const levels = this.levelPair();
+    this.gain = applySlope(levels[0], levels[1], fraction);
 
-function stateName(state) {
-  switch (state) {
-    case ADSR.attack:
-      return "A";
-    case ADSR.decay:
-      return "D";
-    case ADSR.sustain:
-      return "S";
-    case ADSR.release:
-      return "R";
-    default:
-      throw "Unhandled state";
-  }
-}
-
-function updateADSR(voice, adsr) {
-  const duration = (voice.state == ADSR.sustain) ?  0 : adsr[voice.state];
-  var fraction = fractionOfDuration(voice.elapsed, duration);
-
-  if (fraction >= 1) {
-    const before = voice.state;
-    const after = nextADSRState(adsr, before);
-    voice.state = after;
-    voice.start_gain = voice.gain;
-    voice.elapsed = 0;
-    fraction = 0;
+    this.elapsed++;
+    return this.gain;
   }
 
-  const levels = levelPair(voice, adsr);
-  voice.gain = applySlope(levels[0], levels[1], fraction);
-  voice.elapsed++;
+  release() {
+    this.setState(ADSR.release);
+    if (this.params[ADSR.release] == 0) {
+      this.gain = 0;
+    }
+  }
+
+  done() {
+    return (this.gain == 0 && this.state == ADSR.release);
+  }
 }
 
 class SinusoidProcessor extends AudioWorkletProcessor {
@@ -141,7 +156,7 @@ class SinusoidProcessor extends AudioWorkletProcessor {
     this.adsr[ADSR.release] = linearDuration(16);    // 0 is instant silence, 127 is note held forever
     this.adsr[ADSR.sustain] = 0.5;                   // * total gain
   }
-  
+
   process (inputs, outputs, parameters) {
     const output = outputs[0];
     const gain = this.gain;
@@ -149,46 +164,53 @@ class SinusoidProcessor extends AudioWorkletProcessor {
     var keys_to_delete = [];
     Object.keys(voices).forEach(key => {
       const voice = voices[key];
+      if (voice.adsr_gain.done()) {
+        return;
+      }
       output.forEach(channel => {
         for (let i = 0; i < channel.length; ++i) {
-          updateADSR(voice, this.adsr);
-          const voice_gain = voice.gain;
-          if (voice_gain == 0 && voice.state == ADSR.release) {
-            keys_to_delete.push(key);
-          }
+          const voice_gain = voice.adsr_gain.updateGain();
           channel[i] += (gain * voice_gain * Math.cos(voice.phase));
           voice.phase += voice.phase_per_step;
         }
       });
     });
-    for (const key of keys_to_delete) {
-      delete voices[key];
-    }
     return true;
   }
-  
+
+  gcKeys () {
+    var freeList = [];
+    var voices = this.voices;
+    Object.keys(voices).forEach(key => {
+      console.log(voices[key]);
+      if (voices[key].adsr_gain.done()) {
+        console.log("Deletion candidate");
+        freeList.push(key);
+      } else {
+        console.log("Still alive");
+      }
+    });
+    freeList.forEach(key => {
+      delete voices[key];
+    });
+  }
+
   handleKey (key, velocity) {
     if (velocity == 0) {
       if (key in this.voices) {
-        if (this.adsr[ADSR.release] == 0) {
-          delete this.voices[key];
-        } else {
-          const before = this.voices[key].state;
-          const after = ADSR.release;
-          this.voices[key].state = after;
-          this.voices[key].start_gain = this.voices[key].gain;
-        }
+        const voice = this.voices[key];
+        voice.adsr_gain.release();
       }
-    } else if (Object.keys(this.voices).length >= this.polyphony && !(key in this.voices)) {
+      return;
+    }
+    this.gcKeys();
+    if (Object.keys(this.voices).length >= this.polyphony && !(key in this.voices)) {
       return;
     } else {
       const frequency = frequencyForKey(key);
       this.voices[key] = {
         'velocity'       : velocity,
-        'state'          : initialADSRState(this.adsr),
-        'elapsed'        : 0,
-        'start_gain'     : 0,
-        'gain'           : 0,
+        'adsr_gain'      : new ADSRGain(this.adsr),
         'phase'          : 0,
         'phase_per_step' : (2 * Math.PI * frequency) / sampleRate
       };
