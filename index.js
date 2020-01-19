@@ -188,7 +188,6 @@ async function createVirtualKeyboard() {
 async function createBuiltinSynth() {
   var audioCtx;
   var analyzer;
-  var filter;
   var node;
   
   async function maybeInitializeWebAudio() {
@@ -206,14 +205,8 @@ async function createBuiltinSynth() {
       analyzer.fftSize = 512;
       analyzer.connect(audioCtx.destination);
 
-      filter = audioCtx.createBiquadFilter();
-      filter.type = "lowpass";
-      filter.frequency.setValueAtTime(1000, audioCtx.currentTime);
-      filter.Q.setValueAtTime(10, audioCtx.currentTime);
-      filter.connect(analyzer);
-
       const sinusoidNode = new AudioWorkletNode(audioCtx, "sinusoid-processor");
-      sinusoidNode.connect(filter);
+      sinusoidNode.connect(analyzer);
       node = sinusoidNode;
     } catch (e) {
       document.getElementById("connect").innerHTML =
