@@ -238,16 +238,30 @@ async function createBuiltinSynth() {
       }
     }
   }
+
+  function getStaticBuffer_maker() {
+    var sBuffer;
+    var sLength = 0;
+
+    return function(length) {
+      if (!sBuffer || sLength != length) {
+        sLength = length;
+        sBuffer = new Uint8Array(sLength);
+      }
+      return sBuffer;
+    };
+  }
+
+  const getStaticBuffer = getStaticBuffer_maker();
   
   function getBuffer() {
-    var buffer;
     if (analyzer) {
       const bufferLength = analyzer.frequencyBinCount;
-      buffer = new Uint8Array(bufferLength);
+      buffer = getStaticBuffer(bufferLength);
       analyzer.getByteFrequencyData(buffer);
       return buffer;
     } else {
-      buffer = new Uint8Array(1);
+      buffer = getStaticBuffer(1);
       buffer[0] = 0;
       return buffer;
     }
