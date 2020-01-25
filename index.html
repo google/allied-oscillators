@@ -21,7 +21,7 @@ limitations under the License.
   <body>
     <h1>Synthesizer</h1>
     <p>
-      <button id="connect" onclick="startup()">Connect</button>
+      <button id="connect">Connect</button>
       <select id="input"></select>
       <select id="output"></select>
     </p>
@@ -30,6 +30,9 @@ limitations under the License.
     <p>
       <a href="https://github.com/google/allied-oscillators">github.com/google/allied-oscillators</a>
     </p>
-    <script lang="javascript" src="index.js"></script>
+    <script type="module">
+      import {startup} from './index.mjs';
+      document.getElementById('connect').addEventListener('click', startup);
+    </script>
   </body>
 </html>

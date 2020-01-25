@@ -14,12 +14,14 @@
 
 // jshint esversion: 8
 
-function generateUid() {
-  if (!this.next_uid) {
-    this.next_uid = 0;
+function generateUid_maker() {
+  var next_uid = 0;
+  return function() {
+    return (next_uid++);
   }
-  return (this.next_uid++);
 }
+
+const generateUid = generateUid_maker();
 
 const input_select = document.getElementById("input");
 const output_select = document.getElementById("output");
@@ -66,135 +68,20 @@ function dispatchMIDI(input_uid, data) {
   }
 }
 
-async function createVirtualKeyboard() {
-  const keys =
-        ['a','w','s','d','r','f','t','g','h','u','j','i','k','o','l',';','[',"'",']'];
-  const isWhite =
-        [ 1,  0,  1,  1,  0,  1,  0,  1,  1,  0,  1,  0,  1,  0,  1,  1,  0,  1,  0 ];
-
-  const keyboard = document.getElementById("keyboard");
-  keyboard.style.height = "100px";
-  keyboard.style.width = "400px";
-  keyboard.style.position = "relative";
-
-  const numWhiteKeys = arraySum(isWhite);
-  const keyWidth = (100 / numWhiteKeys);
-  
-  function arraySum(a) {
-    function sum(a,b) {
-      return a+b;
-    }
-    return a.reduce(sum, 0);
-  }
-
-  function keyLeft(i) {
-    const numWhiteKeysBefore = arraySum(isWhite.slice(0,i));
-    return (numWhiteKeysBefore * keyWidth) -
-      (isWhite[i] ? 0 : (keyWidth/2));
-  }
-  
-  const input = registerInput("Virtual keyboard");
-  const channel = 0;
-  
-  function makeMIDIData(channel, key, velocity) {
-    return [0x90 | channel, key, velocity];
-  }
-  
-  function makeMouseDownHandler(key) {
-    return function(e) {
-      dispatchMIDI(input, makeMIDIData(channel, key, 64));
-    };
-  }
-
-  function makeMouseUpHandler(key) {
-    return function(e) {
-      dispatchMIDI(input, makeMIDIData(channel, key, 0));
-    };
-  }
-
-  function contextMenuHandler(e) {
-    if(e.preventDefault != undefined) {
-      e.preventDefault();
-    }
-    if(e.stopPropagation != undefined) {
-      e.stopPropagation();
-    }
-    return false;
-  }
-
-  for (var i = 0; i < keys.length; ++i) {
-    const key = document.createElement("div");
-    keyboard.appendChild(key);
-
-    const span = document.createElement("span");
-    key.appendChild(span);
-
-    const text = document.createTextNode(keys[i]);
-    span.appendChild(text);
-
-    key.style.position = "absolute";
-    key.style.display = "flex";
-    key.style.justifyContent = "center";
-    key.style.alignItems = "flex-end";
-    key.style.left = keyLeft(i).toString() + "%";
-    key.style.bottom = isWhite[i] ? "0%" : "50%";
-    key.style.height = isWhite[i] ? "100%" : "50%";
-    key.style.width = keyWidth.toString() + "%";
-    key.style.borderStyle = "solid";
-    key.style.borderWidth = "thin";
-    key.style.borderColor = isWhite[i] ? "black" : "white";
-    key.style.color = isWhite[i] ? "black" : "white";
-    key.style.backgroundColor = isWhite[i] ? "white" : "black";
-    key.style.zIndex = isWhite[i] ? 0 : 1;
-
-    const downHandler = makeMouseDownHandler(57 + i);
-    const upHandler = makeMouseUpHandler(57+ i);
-
-    key.addEventListener('mousedown', downHandler);
-    key.addEventListener('mouseup', upHandler);
-    key.addEventListener('touchstart', downHandler);
-    key.addEventListener('touchend', upHandler);
-    key.addEventListener('contextmenu', contextMenuHandler);
-  }
-    
-  function keyDown(e) {
-    if (event.isComposing || event.repeat || event.keyCode === 229) {
-      return;
-    }
-    i = keys.findIndex(k => k == event.key);
-    if (i == -1) {
-      return;
-    }
-    dispatchMIDI(input, makeMIDIData(channel, 57 + i, 64));
-  } 
-
-  function keyUp(e) {
-    if (event.isComposing || event.keyCode === 229) {
-      return;
-    }
-    i = keys.findIndex(k => k == event.key);
-    if (i == -1) {
-      return;
-    }
-    dispatchMIDI(input, makeMIDIData(channel, 57 + i, 0));
-  } 
-
-  document.addEventListener("keydown", keyDown);
-  document.addEventListener("keyup", keyUp);
-  
-  return input;
-}
+import { createVirtualKeyboard } from './keyboard.mjs';
 
 async function createBuiltinSynth() {
   var audioCtx;
   var analyzer;
   var node;
   
+  var didInitializeWebAudio = false;
+
   async function maybeInitializeWebAudio() {
-    if (this.didInitializeWebAudio === true) {
+    if (didInitializeWebAudio === true) {
       return;
     }
-    this.didInitializeWebAudio = true;
+    didInitializeWebAudio = true;
 
     try {
       window.AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -257,11 +144,11 @@ async function createBuiltinSynth() {
   function getBuffer() {
     if (analyzer) {
       const bufferLength = analyzer.frequencyBinCount;
-      buffer = getStaticBuffer(bufferLength);
+      const buffer = getStaticBuffer(bufferLength);
       analyzer.getByteFrequencyData(buffer);
       return buffer;
     } else {
-      buffer = getStaticBuffer(1);
+      const buffer = getStaticBuffer(1);
       buffer[0] = 0;
       return buffer;
     }
@@ -280,7 +167,7 @@ async function createBuiltinSynth() {
     const buffer = getBuffer(); 
     const bufferLength = buffer.length;
 
-    sliceWidth = width * 1.0 / bufferLength;
+    const sliceWidth = width * 1.0 / bufferLength;
 
     canvasCtx.lineWidth = 2;
     canvasCtx.strokeStyle = "rgb(0, 0, 0)";
@@ -338,7 +225,7 @@ function unregisterWebMIDIPort(port) {
 }
 
 function onWebMIDIStateChange(e) {
-  port = e.port;
+  const port = e.port;
   if (port.state == "connected") {
     registerWebMIDIPort(port);
   } else if (port.state == "disconnected") {
@@ -349,7 +236,7 @@ function onWebMIDIStateChange(e) {
 async function maybeInitializeWebMIDI() {
   var options = {};
   options.sysex = true;
-  access = await navigator.requestMIDIAccess(options);
+  const access = await navigator.requestMIDIAccess(options);
   if (!(access instanceof MIDIAccess)) {
     return;
   }
@@ -362,8 +249,14 @@ async function maybeInitializeWebMIDI() {
   access.onstatechange = onWebMIDIStateChange;
 }
 
-async function startup() {
+export async function startup() {
   await maybeInitializeWebMIDI();
-  const input = await createVirtualKeyboard();
+  
+  const virtualKeyboardInput = registerInput("Virtual keyboard");
+  const virtualKeyboard = await createVirtualKeyboard(
+    document.getElementById("keyboard"),
+    function (midiData) {
+      dispatchMIDI(virtualKeyboardInput, midiData);
+    });
   const output = await createBuiltinSynth();
 }
