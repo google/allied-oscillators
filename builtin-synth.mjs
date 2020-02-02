@@ -68,6 +68,14 @@ export async function createBuiltinSynth(canvas) {
         node.port.postMessage(data);
       }
     }
+    if ((data[0] & 0xf0) === 0xb0) {
+      if (data.length != 3) {
+        return;
+      }
+      if (node != null) {
+        node.port.postMessage(data);
+      }
+    }
   }
 
   function getStaticBuffer_maker() {

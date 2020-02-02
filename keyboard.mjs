@@ -14,7 +14,9 @@
 
 // jshint esversion: 8
 
-export async function createVirtualKeyboard(keyboard, dispatch) {
+import { createControls } from './controls.mjs';
+
+export async function createVirtualKeyboard(keyboard, controls, dispatch) {
   const keys =
         ['a','w','s','d','r','f','t','g','h','u','j','i','k','o','l',';','[',"'",']'];
   const isWhite =
@@ -127,6 +129,8 @@ export async function createVirtualKeyboard(keyboard, dispatch) {
 
   document.addEventListener("keydown", keyDown);
   document.addEventListener("keyup", keyUp);
+
+  createControls(controls, dispatch);
   
   return input;
 }

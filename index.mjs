@@ -29,6 +29,7 @@ export async function startup() {
   const virtualKeyboardInput = registerInput("Virtual keyboard");
   const virtualKeyboard = await createVirtualKeyboard(
     document.getElementById("keyboard"),
+    document.getElementById("controls"),
     function (midiData) {
       dispatchMIDI(virtualKeyboardInput, midiData);
     });
