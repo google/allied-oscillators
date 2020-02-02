@@ -70,7 +70,7 @@ class ADSRGain {
   setInitialState() {
     if (this.params[ADSR.attack] != 0) {
       this.setState(ADSR.attack);
-    } else if (adsr[ADSR.decay] != 0) {
+    } else if (this.params[ADSR.decay] != 0) {
       this.setState(ADSR.decay);
     } else {
       this.setState(ADSR.sustain);
@@ -182,12 +182,8 @@ class SinusoidProcessor extends AudioWorkletProcessor {
     var freeList = [];
     var voices = this.voices;
     Object.keys(voices).forEach(key => {
-      console.log(voices[key]);
       if (voices[key].adsr_gain.done()) {
-        console.log("Deletion candidate");
         freeList.push(key);
-      } else {
-        console.log("Still alive");
       }
     });
     freeList.forEach(key => {
@@ -233,7 +229,7 @@ class SinusoidProcessor extends AudioWorkletProcessor {
         this.adsr[control] = value / 127.0;
         break;
       default:
-        throw "Unhandled state";
+        break;
     }
   }
 
