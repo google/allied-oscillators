@@ -40,8 +40,6 @@ export async function createBuiltinSynth(canvas) {
       sinusoidNode.connect(analyzer);
       node = sinusoidNode;
     } catch (e) {
-      document.getElementById("connect").innerHTML =
-        "Can't use WebAudio: " + e.toString();
       console.log("Can't use WebAudio: " + e.toString());
     }
   }

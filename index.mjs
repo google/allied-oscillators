@@ -26,6 +26,9 @@ import { createBuiltinSynth } from './builtin-synth.mjs';
 export async function startup() {
   await maybeInitializeWebMIDI();
   
+  const connectButton = document.getElementById("connect");
+  connectButton.parentNode.removeChild(connectButton);
+
   const virtualKeyboardInput = registerInput("Virtual keyboard");
   const virtualKeyboard = await createVirtualKeyboard(
     document.getElementById("keyboard"),
