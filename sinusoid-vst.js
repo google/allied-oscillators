@@ -14,6 +14,8 @@
 
 // jshint esversion: 6
 
+import { midi } from './midiutils.mjs';
+
 function frequencyForKey(key) {
   const exponent = (key - 69) / 12;
   return 440 * Math.pow(2, exponent);
@@ -235,20 +237,10 @@ class SinusoidProcessor extends AudioWorkletProcessor {
 
   onmessage (e) {
     const data = e.data;
-    const cmd = data[0] & 0xf0;
-    switch (cmd) {
-      case 0x90:
-        if (data.length == 3) {
-          this.handleKey(data[1], data[2]);
-        }
-        break;
-      case 0xb0:
-        if (data.length == 3) {
-          this.handleControl(data[1], data[2]);
-        }
-        break;
-      default:
-        break;
+    if (midi.isKeyMessage(data)) {
+      this.handleKey(data[1], data[2]);
+    } else if (midi.isControlMessage(data)) {
+      this.handleControl(data[1], data[2]);
     }
   }
 }

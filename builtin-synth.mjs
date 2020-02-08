@@ -13,6 +13,8 @@
 // limitations under the License.
 
 // jshint esversion: 8
+//
+import { midi } from './midiutils.mjs';
 
 export async function createBuiltinSynth(canvas) {
   var audioCtx;
@@ -47,29 +49,8 @@ export async function createBuiltinSynth(canvas) {
   await maybeInitializeWebAudio();
   
   function handleMIDIMessage(data) {
-    if (data.length === 0) {
-      return;
-    }
-    if (data[0] === 0xf8) {
-      // timing
-      return;
-    }
-    if (data[0] === 0xfe) {
-      // line is active
-      return;
-    }
-    if ((data[0] & 0xf0) === 0x90) {
-      if (data.length != 3) {
-        return;
-      }
-      if (node != null) {
-        node.port.postMessage(data);
-      }
-    }
-    if ((data[0] & 0xf0) === 0xb0) {
-      if (data.length != 3) {
-        return;
-      }
+    if (midi.isKeyMessage(data) ||
+        midi.isControlMessage(data)) {
       if (node != null) {
         node.port.postMessage(data);
       }

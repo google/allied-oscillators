@@ -14,6 +14,8 @@
 
 // jshint esversion: 8
 
+import { midi } from './midiutils.mjs';
+
 export async function createControls(controls, dispatch) {
   controls.style.height = "150px";
   controls.style.width = "400px";
@@ -68,12 +70,12 @@ export async function createControls(controls, dispatch) {
     range.value = 0;
 
     const _dispatch = dispatch; // shuts up jshint
+    const _midi = midi; // shuts up jshint
     const changeRange = function(e) {
       const range_value = parseInt(range.value);
       const id_number = parseInt(id.value);
       values[id_number] = range.value;
-      const midi = [0xb0, id_number, range_value];
-      _dispatch(midi);
+      _dispatch(_midi.controlMessage(id_number, range_value));
     };
 
     const _document = document; // shuts up jshint

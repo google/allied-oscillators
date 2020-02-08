@@ -15,6 +15,7 @@
 // jshint esversion: 8
 
 import { createControls } from './controls.mjs';
+import { midi } from './midiutils.mjs';
 
 export async function createVirtualKeyboard(keyboard, controls, dispatch) {
   const keys =
@@ -44,19 +45,15 @@ export async function createVirtualKeyboard(keyboard, controls, dispatch) {
   
   const channel = 0;
   
-  function makeMIDIData(channel, key, velocity) {
-    return [0x90 | channel, key, velocity];
-  }
-  
   function makeMouseDownHandler(key) {
     return function(e) {
-      dispatch(makeMIDIData(channel, key, 64));
+      dispatch(midi.keyMessage(channel, key, 64));
     };
   }
 
   function makeMouseUpHandler(key) {
     return function(e) {
-      dispatch(makeMIDIData(channel, key, 0));
+      dispatch(midi.keyMessage(channel, key, 0));
     };
   }
 
@@ -113,7 +110,7 @@ export async function createVirtualKeyboard(keyboard, controls, dispatch) {
     if (i == -1) {
       return;
     }
-    dispatch(makeMIDIData(channel, 57 + i, 64));
+    dispatch(midi.keyMessage(channel, 57 + i, 64));
   } 
 
   function keyUp(e) {
@@ -124,7 +121,7 @@ export async function createVirtualKeyboard(keyboard, controls, dispatch) {
     if (i == -1) {
       return;
     }
-    dispatch(makeMIDIData(channel, 57 + i, 0));
+    dispatch(midi.keyMessage(channel, 57 + i, 0));
   } 
 
   document.addEventListener("keydown", keyDown);
