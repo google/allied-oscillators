@@ -40,6 +40,8 @@ export async function createControls(controls, dispatch) {
     [72] : 16
   };
 
+  const channel = 0;
+
   for (let i = 0; i < builtins.length; ++i) {
     const control = document.createElement("div");
     controls.appendChild(control);
@@ -75,7 +77,7 @@ export async function createControls(controls, dispatch) {
       const range_value = parseInt(range.value);
       const id_number = parseInt(id.value);
       values[id_number] = range.value;
-      _dispatch(_midi.controlMessage(id_number, range_value));
+      _dispatch(_midi.controlMessage(channel, id_number, range_value));
     };
 
     const _document = document; // shuts up jshint
