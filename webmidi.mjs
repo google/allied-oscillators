@@ -14,6 +14,8 @@
 
 // jshint esversion: 8
 
+import { midi } from './midiutils.mjs';
+
 function generateUid_maker() {
   var next_uid = 0;
   return function() {
@@ -43,6 +45,23 @@ function removeFromSelect(select, uid) {
   }
 }
 
+function selectedOption(select) {
+  if (select.options.length && select.selectedIndex >= 0) {
+    return select.options[select.selectedIndex];
+  } else {
+    return null;
+  }
+}
+
+function optionWithUID(select, uid) {
+  for (const option of select.options) {
+    if (option.uid == uid) {
+      return option;
+    }
+  }
+  return null;
+}
+
 function unregisterInput(uid) {
   removeFromSelect(input_select, uid);
 }
@@ -60,11 +79,49 @@ export function registerOutput(name, fn) {
   return output.uid;
 }
 
+function updateChannelControls(input, data) {
+  if (!("channel_controls" in input)) {
+    input.channel_controls = {};
+  }
+  const channel_controls = input.channel_controls;
+  const channel = data[0] & 0xf;
+  if (!(channel in channel_controls)) {
+    input.channel_controls[channel] = {};
+  }
+  channel_controls[channel][data[1]] = data[2];
+}
+
+function sendChannelControls() {
+  const input = selectedOption(input_select);
+  const output = selectedOption(output_select);
+  if (input && output) {
+    if (!("channel_controls" in input)) {
+      return;
+    }
+    const channel_controls = input.channel_controls;
+    for (const channel in channel_controls) {
+      const controls = channel_controls[channel];
+      for (const control in controls) {
+        const value = controls[control];
+        output.fn(midi.controlMessage(
+          parseInt(channel),
+          parseInt(control),
+          value));
+      }
+    }
+  }
+}
+
 export function dispatchMIDI(input_uid, data) {
-  if (input_select.options.length && input_select.selectedIndex >= 0 &&
-      output_select.options.length && output_select.selectedIndex >= 0 &&
-      input_select.options[input_select.selectedIndex].uid == input_uid) {
-    output_select.options[output_select.selectedIndex].fn(data);
+  const input = optionWithUID(input_select, input_uid);
+  if (midi.isControlMessage(data)) {
+     updateChannelControls(input, data);
+  }
+  if (input == selectedOption(input_select)) {
+    const output = selectedOption(output_select);
+    if (output) {
+      output.fn(data);
+    }
   }
 }
 
@@ -119,4 +176,6 @@ export async function maybeInitializeWebMIDI() {
     registerWebMIDIPort(port);
   }
   access.onstatechange = onWebMIDIStateChange;
+  input_select.onchange = sendChannelControls;
+  output_select.onchange = sendChannelControls;
 }
