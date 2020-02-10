@@ -40,6 +40,18 @@ export async function createControls(controls, dispatch) {
     [72] : 16
   };
 
+  const ids_and_ranges = [];
+
+  const updateValues = function(id_number, value) {
+    values[id_number] = value;
+    for (const id_and_range of ids_and_ranges) {
+      if (id_and_range.id.value == id_number &&
+          id_and_range.range.value != value) {
+        id_and_range.range.value = value;
+      }
+    }
+  };
+
   const channel = 0;
 
   for (let i = 0; i < builtins.length; ++i) {
@@ -71,12 +83,17 @@ export async function createControls(controls, dispatch) {
     range.step = 1;
     range.value = 0;
 
+    ids_and_ranges.push(Object.freeze({
+      'id': id,
+      'range': range
+    }));
+
     const _dispatch = dispatch; // shuts up jshint
     const _midi = midi; // shuts up jshint
     const changeRange = function(e) {
       const range_value = parseInt(range.value);
       const id_number = parseInt(id.value);
-      values[id_number] = range.value;
+      updateValues(id_number, range.value);
       _dispatch(_midi.controlMessage(channel, id_number, range_value));
     };
 
