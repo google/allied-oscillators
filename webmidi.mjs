@@ -28,12 +28,20 @@ const generateUid = generateUid_maker();
 const input_select = document.getElementById("input");
 const output_select = document.getElementById("output");
 
-export function registerInput(name) {
-  const input = document.createElement("option");
-  input.innerHTML = name;
-  input.uid = generateUid();
-  input_select.options.add(input);
-  return input.uid;
+function addOption(select, name, select_by_default) {
+  const option = document.createElement("option");
+  option.innerHTML = name;
+  option.uid = generateUid();
+  select.options.add(option);
+  if (select_by_default) {
+    select.selectedIndex = select.options.length - 1;
+  }
+  return option;
+}
+
+export function registerInput(name, select_by_default=false) {
+  const option = addOption(input_select, name, select_by_default);
+  return option.uid;
 }
 
 function removeFromSelect(select, uid) {
@@ -70,13 +78,10 @@ function unregisterOutput(uid) {
   removeFromSelect(output_select, uid);
 }
 
-export function registerOutput(name, fn) {
-  const output = document.createElement("option");
-  output.innerHTML = name;
-  output.uid = generateUid();
-  output.fn = fn;
-  output_select.options.add(output);
-  return output.uid;
+export function registerOutput(name, fn, select_by_default=false) {
+  const option = addOption(output_select, name, select_by_default);
+  option.fn = fn;
+  return option.uid;
 }
 
 function updateChannelControls(input, data) {

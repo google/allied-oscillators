@@ -29,7 +29,7 @@ export async function startup() {
   const connectButton = document.getElementById("connect");
   connectButton.parentNode.removeChild(connectButton);
 
-  const virtualKeyboardInput = registerInput("Virtual keyboard");
+  const virtualKeyboardInput = registerInput("Virtual keyboard", true);
   const virtualKeyboard = await createVirtualKeyboard(
     document.getElementById("keyboard"),
     document.getElementById("controls"),
@@ -39,5 +39,5 @@ export async function startup() {
 
   const builtinSynthHandler =
     await createBuiltinSynth(document.getElementById("scope"));
-  registerOutput("Bultin Synthesizer", builtinSynthHandler);
+  registerOutput("Bultin Synthesizer", builtinSynthHandler, true);
 }
