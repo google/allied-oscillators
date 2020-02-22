@@ -21,6 +21,7 @@ export async function createControls(controls, dispatch) {
   controls.style.width = "400px";
   controls.style.position = "relative";
   controls.style.backgroundColor = "#c0c0c0";
+  controls.style.overflow = "scroll";
 
   const known_names = {
     [73] : 'attack',

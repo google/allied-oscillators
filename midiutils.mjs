@@ -26,6 +26,10 @@ export const midi = {
   },
   'isControlMessage' : function(message) {
     return (message.length == 3) && ((message[0] & 0xf0) == 0xb0);
+  },
+  'frequencyForKey' : function(key) {
+    const exponent = (key - 69) / 12;
+    return 440 * Math.pow(2, exponent);
   }
 };
 

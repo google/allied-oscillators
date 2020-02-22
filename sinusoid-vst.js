@@ -15,11 +15,14 @@
 // jshint esversion: 6
 
 import { midi } from './midiutils.mjs';
+import { adsr } from './adsr.mjs';
 
-function frequencyForKey(key) {
-  const exponent = (key - 69) / 12;
-  return 440 * Math.pow(2, exponent);
-}
+const params_for_controls = Object.freeze({
+  [73] : adsr.attack,
+  [75] : adsr.decay,
+  [79] : adsr.sustain,
+  [72] : adsr.release
+});
 
 const durationUnit = sampleRate / 127;
 const nonlinearFactor = 1.02;
@@ -33,118 +36,6 @@ function linearDuration(nonlinear_duration) {
   return durationUnit * nonlinear_duration * Math.pow(nonlinearFactor, nonlinear_duration);
 }
 
-function fractionOfDuration(elapsed, duration) {
-  if (elapsed >= duration) {
-    return 1; // we've already saturated it
-  } else {
-    return elapsed / duration;
-  }
-}
-
-// applySlope doesn't call fractionOfDuration because the processor needs
-// to know it to advance the state of the envelope
-function applySlope(start_level, end_level, fraction) {
-  if (fraction >= 1) {
-    return end_level;
-  }
-  return start_level + ((end_level - start_level) * fraction);
-}
-
-const ADSR = Object.freeze({
-  'attack'  : 73,
-  'decay'   : 75,
-  'sustain' : 79,
-  'release' : 72
-});
-
-class ADSRGain {
-  constructor(params) {
-    this.params = params;
-    this.setInitialState();
-  }
-
-  setState(state) {
-    this.state = state;
-    this.start_gain = this.gain;
-    this.elapsed = 0;
-  }
-
-  setInitialState() {
-    if (this.params[ADSR.attack] != 0) {
-      this.setState(ADSR.attack);
-    } else if (this.params[ADSR.decay] != 0) {
-      this.setState(ADSR.decay);
-    } else {
-      this.setState(ADSR.sustain);
-    }
-  }
-
-  nextState() {
-    switch (this.state) {
-      case ADSR.attack:
-        if (this.params[ADSR.decay] == 0) {
-          return ADSR.sustain;
-        }
-        return ADSR.decay;
-      case ADSR.decay:
-        return ADSR.sustain;
-      case ADSR.sustain:
-        return ADSR.sustain;
-      case ADSR.release:
-        return ADSR.release;
-      default:
-        throw "Unhandled state";
-    }
-  }
-
-  levelPair() {
-    switch (this.state) {
-      case ADSR.attack:
-        return [0, 1];
-      case ADSR.decay:
-        return [1, this.params[ADSR.sustain]];
-      case ADSR.sustain:
-        return [this.params[ADSR.sustain], this.params[ADSR.sustain]];
-      case ADSR.release:
-        return [this.start_gain, 0];
-      default:
-        throw "Unhandled state";
-    }
-  }
-
-  updateGain() {
-    const duration =
-      (this.state == ADSR.sustain) ? 0 : this.params[this.state];
-
-    var fraction = fractionOfDuration(this.elapsed, duration);
-
-    if (fraction >= 1) {
-      const new_state = this.nextState();
-      if (new_state != this.state) {
-        this.setState(new_state);
-        fraction = 0;
-      }
-    }
-
-    const levels = this.levelPair();
-    this.gain = applySlope(levels[0], levels[1], fraction);
-
-    this.elapsed++;
-    return this.gain;
-  }
-
-  release() {
-    this.setState(ADSR.release);
-    if (this.params[ADSR.release] == 0) {
-      this.gain = 0;
-    }
-  }
-
-  done() {
-    return (this.gain == 0 && this.state == ADSR.release);
-  }
-}
-
 class SinusoidProcessor extends AudioWorkletProcessor {
   constructor (options) {
     super();
@@ -152,26 +43,26 @@ class SinusoidProcessor extends AudioWorkletProcessor {
     this.port.onmessage = this.onmessage.bind(this);
     this.polyphony = 8;
     this.gain = 0.8 / this.polyphony;
-    this.adsr = {};
-    this.adsr[ADSR.attack]  = linearDuration(16);    // 0 is instant full gain, 127 is silence
-    this.adsr[ADSR.decay]   = linearDuration(16);    // 0 is instant decay to sustain level, 127 is full gain while held
-    this.adsr[ADSR.release] = linearDuration(16);    // 0 is instant silence, 127 is note held forever
-    this.adsr[ADSR.sustain] = 0.5;                   // * total gain
+    this.params = {
+      [adsr.attack] : linearDuration(16),  // 0 is instant full gain, 127 is silence
+      [adsr.decay]  : linearDuration(16),   // 0 is instant decay to sustain level, 127 is full gain while held
+      [adsr.sustain] : 0.5,                // * total gain
+      [adsr.release] : linearDuration(16), // 0 is instant silence, 127 is note held forever
+    };
   }
 
   process (inputs, outputs, parameters) {
     const output = outputs[0];
     const gain = this.gain;
     const voices = this.voices;
-    var keys_to_delete = [];
     Object.keys(voices).forEach(key => {
       const voice = voices[key];
-      if (voice.adsr_gain.done()) {
+      if (voice.gain.done()) {
         return;
       }
       output.forEach(channel => {
         for (let i = 0; i < channel.length; ++i) {
-          const voice_gain = voice.adsr_gain.updateGain();
+          const voice_gain = voice.gain.updateGain();
           channel[i] += (gain * voice_gain * Math.cos(voice.phase));
           voice.phase += voice.phase_per_step;
         }
@@ -184,7 +75,7 @@ class SinusoidProcessor extends AudioWorkletProcessor {
     var freeList = [];
     var voices = this.voices;
     Object.keys(voices).forEach(key => {
-      if (voices[key].adsr_gain.done()) {
+      if (voices[key].gain.done()) {
         freeList.push(key);
       }
     });
@@ -197,7 +88,7 @@ class SinusoidProcessor extends AudioWorkletProcessor {
     if (velocity == 0) {
       if (key in this.voices) {
         const voice = this.voices[key];
-        voice.adsr_gain.release();
+        voice.gain.release();
       }
       return;
     }
@@ -205,10 +96,10 @@ class SinusoidProcessor extends AudioWorkletProcessor {
     if (Object.keys(this.voices).length >= this.polyphony && !(key in this.voices)) {
       return;
     } else {
-      const frequency = frequencyForKey(key);
+      const frequency = midi.frequencyForKey(key);
       this.voices[key] = {
         'velocity'       : velocity,
-        'adsr_gain'      : new ADSRGain(this.adsr),
+        'gain'           : new adsr.Gain(this.params),
         'phase'          : 0,
         'phase_per_step' : (2 * Math.PI * frequency) / sampleRate
       };
@@ -221,14 +112,19 @@ class SinusoidProcessor extends AudioWorkletProcessor {
     if (value > 127)
       value = 127;
 
-    switch (control) {
-      case ADSR.attack:
-      case ADSR.decay:
-      case ADSR.release:
-        this.adsr[control] = linearDuration(value);
+    if (!(control in params_for_controls))
+      return;
+
+    const param = params_for_controls[control];
+
+    switch (param) {
+      case adsr.attack:
+      case adsr.decay:
+      case adsr.release:
+        this.params[param] = linearDuration(value);
         break;
-      case ADSR.sustain:
-        this.adsr[control] = value / 127.0;
+      case adsr.sustain:
+        this.params[param] = value / 127.0;
         break;
       default:
         break;
