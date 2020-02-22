@@ -55,19 +55,19 @@ class SinusoidProcessor extends AudioWorkletProcessor {
     const output = outputs[0];
     const gain = this.gain;
     const voices = this.voices;
-    Object.keys(voices).forEach(key => {
+    for (let key in voices) {
       const voice = voices[key];
       if (voice.gain.done()) {
-        return;
+        continue;
       }
-      output.forEach(channel => {
+      for (let channel of output) {
         for (let i = 0; i < channel.length; ++i) {
           const voice_gain = voice.gain.updateGain();
           channel[i] += (gain * voice_gain * Math.cos(voice.phase));
           voice.phase += voice.phase_per_step;
         }
-      });
-    });
+      }
+    }
     return true;
   }
 
