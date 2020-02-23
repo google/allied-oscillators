@@ -22,6 +22,45 @@ import {
 } from './webmidi.mjs';
 import { createVirtualKeyboard } from './keyboard.mjs';
 import { createBuiltinSynth } from './builtin-synth.mjs';
+import { audio } from './webaudio.mjs';
+
+function draw() {
+  const canvas = document.getElementById("scope");
+  const canvasCtx = canvas.getContext("2d");
+  const width = canvas.width;
+  const height = canvas.height;
+
+  canvasCtx.clearRect(0, 0, width, height);
+
+  requestAnimationFrame(draw);
+
+  const buffer = audio.getFFT(); 
+  const bufferLength = buffer.length;
+
+  const sliceWidth = width * 1.0 / bufferLength;
+
+  canvasCtx.lineWidth = 2;
+  canvasCtx.strokeStyle = "rgb(0, 0, 0)";
+  canvasCtx.beginPath();
+
+  function toY(v) {
+    return height - v * height / 256.0;
+  }
+
+  var x = 0;
+  for (var i = 0; i < bufferLength; ++i, x += sliceWidth) {
+    const y = toY(buffer[i]);
+
+    if (i === 0) {
+      canvasCtx.moveTo(x, y);
+    } else {
+      canvasCtx.lineTo(x, y);
+    }
+  }
+  canvasCtx.lineTo(x, toY(buffer[i - 1]));
+
+  canvasCtx.stroke();
+}
 
 export async function startup() {
   await maybeInitializeWebMIDI();
@@ -38,6 +77,9 @@ export async function startup() {
     });
 
   const builtinSynthHandler =
-    await createBuiltinSynth(document.getElementById("scope"));
-  registerOutput("Bultin Synthesizer", builtinSynthHandler, true);
+    await createBuiltinSynth(
+      "sinusoid-vst.js", "sinusoid-vst");
+  registerOutput("Builtin Sinusoid", builtinSynthHandler, true);
+
+  requestAnimationFrame(draw);
 }

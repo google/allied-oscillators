@@ -36,7 +36,7 @@ function linearDuration(nonlinear_duration) {
   return durationUnit * nonlinear_duration * Math.pow(nonlinearFactor, nonlinear_duration);
 }
 
-class SinusoidProcessor extends AudioWorkletProcessor {
+class SinusoidVST extends AudioWorkletProcessor {
   constructor (options) {
     super();
     this.voices = {};
@@ -141,4 +141,4 @@ class SinusoidProcessor extends AudioWorkletProcessor {
   }
 }
 
-registerProcessor('sinusoid-processor', SinusoidProcessor);
+registerProcessor('sinusoid-vst', SinusoidVST);
