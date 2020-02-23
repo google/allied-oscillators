@@ -38,13 +38,13 @@ function linearDuration(nonlinear_duration) {
 }
 
 class SinusoidVoice extends polyphony.Voice {
-  constructor () {
+  constructor() {
     super();
     this.gain = new adsr.Gain();
     this.reset();
   }
 
-  reset () {
+  reset() {
     super.reset();
     this.velocity = 0;
     this.gain.reset();
@@ -52,7 +52,7 @@ class SinusoidVoice extends polyphony.Voice {
     this.phase_per_step = 0;
   }
 
-  keyDown (key, velocity, params) {
+  keyDown(key, velocity, params) {
     super.keyDown(key);
     this.velocity = velocity;
     this.gain.set(params);
@@ -63,7 +63,7 @@ class SinusoidVoice extends polyphony.Voice {
 }
 
 class SinusoidVST extends AudioWorkletProcessor {
-  constructor (options) {
+  constructor(options) {
     super();
     this.polyphony = new polyphony.Polyphony(8, SinusoidVoice);
     this.port.onmessage = this.onmessage.bind(this);
@@ -76,7 +76,7 @@ class SinusoidVST extends AudioWorkletProcessor {
     };
   }
 
-  process (inputs, outputs, parameters) {
+  process(inputs, outputs, parameters) {
     const output = outputs[0];
     const gain = this.gain;
     const polyphony = this.polyphony;
@@ -100,13 +100,13 @@ class SinusoidVST extends AudioWorkletProcessor {
     return true;
   }
 
-  allSoundOff () {
+  allSoundOff() {
     for (let voice of polyphony.voices) {
       voice.reset();
     }
   }
 
-  handleKey (key, velocity) {
+  handleKey(key, velocity) {
     if (velocity == 0) {
       const voice = this.polyphony.get(key);
       if (voice) {
@@ -123,7 +123,7 @@ class SinusoidVST extends AudioWorkletProcessor {
     }
   }
 
-  handleControl (control, value) {
+  handleControl(control, value) {
     if (value < 0)
       value = 0;
     if (value > 127)
@@ -148,7 +148,7 @@ class SinusoidVST extends AudioWorkletProcessor {
     }
   }
 
-  onmessage (e) {
+  onmessage(e) {
     const data = e.data;
     if (midi.isAllSoundOff(data)) {
       this.allSoundOff();

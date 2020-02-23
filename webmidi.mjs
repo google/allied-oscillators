@@ -145,11 +145,11 @@ function registerWebMIDIPort(port) {
   if (port.type == "input") {
     port.uid = registerInput(port.name);
     const uid = port.uid;
-    port.onmidimessage = function (e) {
+    port.onmidimessage = function(e) {
       dispatchMIDI(uid, e.data);
     };
   } else if (port.type == "output") {
-    port.uid = registerOutput(port.name, function (data) {
+    port.uid = registerOutput(port.name, function(data) {
       port.send(data);
     });
   }

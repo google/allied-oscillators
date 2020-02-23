@@ -15,28 +15,28 @@
 // jshint esversion: 8
 
 class Voice {
-  reset () {
+  reset() {
     this.key = null;
   }
 
-  keyDown (key) {
+  keyDown(key) {
     this.key = key;
   }
 }
 
 class Polyphony {
-  constructor (polyphony, VoiceImpl) {
+  constructor(polyphony, VoiceImpl) {
     this.voices = [];
     for (let i = 0; i < polyphony; ++i) {
       this.voices.push(new VoiceImpl());
     }
   }
 
-  count () {
+  count() {
     return this.voices.length;
   }
 
-  get (key) {
+  get(key) {
     for (let i = 0; i < this.voices.length; ++i) {
       if (this.voices[i].key == key) {
         return this.voices[i];
