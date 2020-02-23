@@ -36,19 +36,26 @@ async function initialize() {
   }
 }
 
+function connect(node) {
+  node.connect(analyzer);
+}
+
+function disconnect(node) {
+  node.disconnect(analyzer);
+}
+
 async function makeNode(js, class_name) {
   await initialize();
 
   try {
     await audioCtx.audioWorklet.addModule(js);
-    const node = new AudioWorkletNode(audioCtx, class_name);
-    node.connect(analyzer);
-    return node;
+    return new AudioWorkletNode(audioCtx, class_name);
   } catch (e) {
     console.log("Can't load " + class_name + " from " + vst + ": " + e.toString());
     return null;
   }
 }
+
 
 function getStaticBuffer_maker() {
   var sBuffer;
@@ -80,5 +87,7 @@ function getFFT() {
 
 export const audio = {
   'makeNode' : makeNode,
+  'connect': connect,
+  'disconnect' : disconnect,
   'getFFT' : getFFT
 };

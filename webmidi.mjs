@@ -96,6 +96,13 @@ function updateChannelControls(input, data) {
   channel_controls[channel][data[1]] = data[2];
 }
 
+function allSoundOff() {
+  const message = midi.allSoundOff(0);
+  for (let i = 0; i < output_select.options.length; ++i) {
+    output_select.options[i].fn(message);
+  }
+}
+
 function sendChannelControls() {
   const input = selectedOption(input_select);
   const output = selectedOption(output_select);
@@ -182,5 +189,8 @@ export async function maybeInitializeWebMIDI() {
   }
   access.onstatechange = onWebMIDIStateChange;
   input_select.onchange = sendChannelControls;
-  output_select.onchange = sendChannelControls;
+  output_select.onchange = function() {
+    allSoundOff();
+    sendChannelControls();
+  };
 }

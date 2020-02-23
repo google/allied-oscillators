@@ -19,8 +19,24 @@ import { audio } from './webaudio.mjs';
 
 export async function createBuiltinSynth(js, class_name) {
   const node = await audio.makeNode(js, class_name);
+  let active = false;
+
+  function updateActive(data) {
+    if (active) {
+      if (midi.isAllSoundOff(data)) {
+        audio.disconnect(node);
+        active = false;
+      }
+    } else {
+      if (midi.isKeyMessage(data)) {
+        audio.connect(node);
+        active = true;
+      }
+    }
+  }
 
   function handleMIDIMessage(data) {
+    updateActive(data);
     if (midi.isKeyMessage(data) ||
         midi.isControlMessage(data)) {
       if (node != null) {

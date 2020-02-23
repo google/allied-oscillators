@@ -21,11 +21,20 @@ export const midi = {
   'controlMessage' : function(channel, id, value) {
     return [0xb0 | channel, id, value];
   },
+  'allSoundOff' : function(channel) {
+    return [0xb0 | channel, 0x78, 0x0];
+  },
   'isKeyMessage' : function(message) {
     return (message.length == 3) && ((message[0] & 0xf0) == 0x90);
   },
   'isControlMessage' : function(message) {
     return (message.length == 3) && ((message[0] & 0xf0) == 0xb0);
+  },
+  'isAllSoundOff' : function(message) {
+    return (message.length == 3) &&
+      ((message[0] & 0xf0) == 0xb0) &&
+      (message[1] == 0x78) &&
+      (message[2] == 0x0);
   },
   'frequencyForKey' : function(key) {
     const exponent = (key - 69) / 12;

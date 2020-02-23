@@ -44,8 +44,8 @@ class SinusoidVST extends AudioWorkletProcessor {
     this.polyphony = 8;
     this.gain = 0.8 / this.polyphony;
     this.params = {
-      [adsr.attack] : linearDuration(16),  // 0 is instant full gain, 127 is silence
-      [adsr.decay]  : linearDuration(16),   // 0 is instant decay to sustain level, 127 is full gain while held
+      [adsr.attack]  : linearDuration(16), // 0 is instant full gain, 127 is silence
+      [adsr.decay]   : linearDuration(16), // 0 is instant decay to sustain level, 127 is full gain while held
       [adsr.sustain] : 0.5,                // * total gain
       [adsr.release] : linearDuration(16), // 0 is instant silence, 127 is note held forever
     };
@@ -82,6 +82,10 @@ class SinusoidVST extends AudioWorkletProcessor {
     freeList.forEach(key => {
       delete voices[key];
     });
+  }
+
+  allSoundOff () {
+    this.voices = {};
   }
 
   handleKey (key, velocity) {
@@ -133,7 +137,9 @@ class SinusoidVST extends AudioWorkletProcessor {
 
   onmessage (e) {
     const data = e.data;
-    if (midi.isKeyMessage(data)) {
+    if (midi.isAllSoundOff(data)) {
+      this.allSoundOff();
+    } else if (midi.isKeyMessage(data)) {
       this.handleKey(data[1], data[2]);
     } else if (midi.isControlMessage(data)) {
       this.handleControl(data[1], data[2]);
