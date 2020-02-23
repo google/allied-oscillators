@@ -16,6 +16,7 @@
 
 import { midi } from './midiutils.mjs';
 import { adsr } from './adsr.mjs';
+import { polyphony } from './polyphony.mjs';
 
 const params_for_controls = Object.freeze({
   [73] : adsr.attack,
@@ -36,13 +37,37 @@ function linearDuration(nonlinear_duration) {
   return durationUnit * nonlinear_duration * Math.pow(nonlinearFactor, nonlinear_duration);
 }
 
+class SinusoidVoice extends polyphony.Voice {
+  constructor () {
+    super();
+    this.gain = new adsr.Gain();
+    this.reset();
+  }
+
+  reset () {
+    super.reset();
+    this.velocity = 0;
+    this.gain.reset();
+    this.phase = 0;
+    this.phase_per_step = 0;
+  }
+
+  keyDown (key, velocity, params) {
+    super.keyDown(key);
+    this.velocity = velocity;
+    this.gain.set(params);
+    this.phase = 0;
+    const frequency = midi.frequencyForKey(key);
+    this.phase_per_step = (2 * Math.PI * frequency) / sampleRate;
+  }
+}
+
 class SinusoidVST extends AudioWorkletProcessor {
   constructor (options) {
     super();
-    this.voices = {};
+    this.polyphony = new polyphony.Polyphony(8, SinusoidVoice);
     this.port.onmessage = this.onmessage.bind(this);
-    this.polyphony = 8;
-    this.gain = 0.8 / this.polyphony;
+    this.gain = 0.8 / this.polyphony.count();
     this.params = {
       [adsr.attack]  : linearDuration(16), // 0 is instant full gain, 127 is silence
       [adsr.decay]   : linearDuration(16), // 0 is instant decay to sustain level, 127 is full gain while held
@@ -54,10 +79,14 @@ class SinusoidVST extends AudioWorkletProcessor {
   process (inputs, outputs, parameters) {
     const output = outputs[0];
     const gain = this.gain;
-    const voices = this.voices;
-    for (let key in voices) {
-      const voice = voices[key];
+    const polyphony = this.polyphony;
+    for (let voice of polyphony.voices) {
+      const key = voice.key;
+      if (key == null) {
+        continue;
+      }
       if (voice.gain.done()) {
+        voice.reset();
         continue;
       }
       for (let channel of output) {
@@ -71,42 +100,26 @@ class SinusoidVST extends AudioWorkletProcessor {
     return true;
   }
 
-  gcKeys () {
-    var freeList = [];
-    var voices = this.voices;
-    Object.keys(voices).forEach(key => {
-      if (voices[key].gain.done()) {
-        freeList.push(key);
-      }
-    });
-    freeList.forEach(key => {
-      delete voices[key];
-    });
-  }
-
   allSoundOff () {
-    this.voices = {};
+    for (let voice of polyphony.voices) {
+      voice.reset();
+    }
   }
 
   handleKey (key, velocity) {
     if (velocity == 0) {
-      if (key in this.voices) {
-        const voice = this.voices[key];
+      const voice = this.polyphony.get(key);
+      if (voice) {
         voice.gain.release();
       }
-      return;
-    }
-    this.gcKeys();
-    if (Object.keys(this.voices).length >= this.polyphony && !(key in this.voices)) {
-      return;
     } else {
-      const frequency = midi.frequencyForKey(key);
-      this.voices[key] = {
-        'velocity'       : velocity,
-        'gain'           : new adsr.Gain(this.params),
-        'phase'          : 0,
-        'phase_per_step' : (2 * Math.PI * frequency) / sampleRate
-      };
+      let voice = this.polyphony.get(key);
+      if (!voice) {
+        voice = this.polyphony.get(null);
+      }
+      if (voice) {
+        voice.keyDown(key, velocity, this.params);
+      }
     }
   }
 

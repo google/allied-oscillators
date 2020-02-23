@@ -51,7 +51,7 @@ async function makeNode(js, class_name) {
     await audioCtx.audioWorklet.addModule(js);
     return new AudioWorkletNode(audioCtx, class_name);
   } catch (e) {
-    console.log("Can't load " + class_name + " from " + vst + ": " + e.toString());
+    console.log("Can't load " + class_name + " from " + js + ": " + e.toString());
     return null;
   }
 }

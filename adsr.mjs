@@ -39,9 +39,8 @@ function applySlope(start_level, end_level, fraction) {
 }
 
 class Gain {
-  constructor(params) {
-    this.params = params;
-    this.setInitialState();
+  constructor() {
+    this.reset();
   }
 
   setState(state) {
@@ -123,6 +122,19 @@ class Gain {
 
   done() {
     return (this.gain == 0 && this.state == ADSR.release);
+  }
+
+  reset() {
+    this.params = null;
+    this.state = null;
+    this.gain = 0;
+    this.start_gain = 0;
+  }
+
+  set(params) {
+    this.reset();
+    this.params = params;
+    this.setInitialState();
   }
 }
 

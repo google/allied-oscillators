@@ -19,6 +19,10 @@ import { audio } from './webaudio.mjs';
 
 export async function createBuiltinSynth(js, class_name) {
   const node = await audio.makeNode(js, class_name);
+  if (node == null) {
+    return null;
+  }
+
   let active = false;
 
   function updateActive(data) {

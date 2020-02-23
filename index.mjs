@@ -76,10 +76,13 @@ export async function startup() {
       dispatchMIDI(virtualKeyboardInput, midiData);
     });
 
-  const builtinSynthHandler =
+  const sinusoidHandler =
     await createBuiltinSynth(
       "sinusoid-vst.js", "sinusoid-vst");
-  registerOutput("Builtin Sinusoid", builtinSynthHandler, true);
+
+  if (sinusoidHandler) {
+    registerOutput("Builtin Sinusoid", sinusoidHandler, true);
+  }
 
   requestAnimationFrame(draw);
 }
