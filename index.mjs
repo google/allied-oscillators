@@ -62,6 +62,14 @@ function draw() {
   canvasCtx.stroke();
 }
 
+async function registerSynth(js, vst, name) {
+  const handler = await createBuiltinSynth(js, vst); 
+
+  if (handler) {
+    registerOutput(name, handler, true);
+  }
+}
+
 export async function startup() {
   await maybeInitializeWebMIDI();
   
@@ -76,13 +84,8 @@ export async function startup() {
       dispatchMIDI(virtualKeyboardInput, midiData);
     });
 
-  const sinusoidHandler =
-    await createBuiltinSynth(
-      "sinusoid-vst.js", "sinusoid-vst");
-
-  if (sinusoidHandler) {
-    registerOutput("Builtin Sinusoid", sinusoidHandler, true);
-  }
+  await registerSynth("sinusoid-vst.js", "sinusoid-vst", "Builtin Sinusoid");
+  await registerSynth("fm-vst.js", "fm-vst", "Builtin FM");
 
   requestAnimationFrame(draw);
 }

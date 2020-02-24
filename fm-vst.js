@@ -1,4 +1,4 @@
-// Copyright 2019 Google LLC
+// Copyright 2020 Google LLC
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ function linearDuration(nonlinear_duration) {
   return durationUnit * nonlinear_duration * Math.pow(nonlinearFactor, nonlinear_duration);
 }
 
-class SinusoidVoice extends polyphony.Voice {
+class FMVoice extends polyphony.Voice {
   constructor() {
     super();
     this.gain = new adsr.Gain();
@@ -62,10 +62,10 @@ class SinusoidVoice extends polyphony.Voice {
   }
 }
 
-class SinusoidVST extends AudioWorkletProcessor {
+class FMVST extends AudioWorkletProcessor {
   constructor(options) {
     super();
-    this.polyphony = new polyphony.Polyphony(8, SinusoidVoice);
+    this.polyphony = new polyphony.Polyphony(8, FMVoice);
     this.port.onmessage = this.onmessage.bind(this);
     this.gain = 0.8 / this.polyphony.count();
     this.params = {
@@ -160,4 +160,4 @@ class SinusoidVST extends AudioWorkletProcessor {
   }
 }
 
-registerProcessor('sinusoid-vst', SinusoidVST);
+registerProcessor('fm-vst', FMVST);
