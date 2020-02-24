@@ -60,6 +60,30 @@ class FMVoice extends polyphony.Voice {
     const frequency = midi.frequencyForKey(key);
     this.phase_per_step = (2 * Math.PI * frequency) / sampleRate;
   }
+
+  process(gain, output) {
+    if (this.key == null) {
+      return;
+    }
+    if (this.gain.done()) {
+      this.reset();
+      return;
+    }
+    const length = output[0].length;
+    for (const channel of output) {
+      if (channel.length != length) {
+        throw("Asymmetrical channels");
+      }
+    }
+    for (let i = 0; i < length; ++i) {
+      const voice_gain = this.gain.updateGain();
+      const value = (gain * voice_gain * Math.cos(this.phase));
+      this.phase += this.phase_per_step;
+      for (let channel of output) {
+        channel[i] += value;
+      }
+    }
+  }
 }
 
 class FMVST extends AudioWorkletProcessor {
@@ -78,24 +102,8 @@ class FMVST extends AudioWorkletProcessor {
 
   process(inputs, outputs, parameters) {
     const output = outputs[0];
-    const gain = this.gain;
-    const polyphony = this.polyphony;
-    for (let voice of polyphony.voices) {
-      const key = voice.key;
-      if (key == null) {
-        continue;
-      }
-      if (voice.gain.done()) {
-        voice.reset();
-        continue;
-      }
-      for (let channel of output) {
-        for (let i = 0; i < channel.length; ++i) {
-          const voice_gain = voice.gain.updateGain();
-          channel[i] += (gain * voice_gain * Math.cos(voice.phase));
-          voice.phase += voice.phase_per_step;
-        }
-      }
+    for (let voice of this.polyphony.voices) {
+      voice.process(this.gain, output);
     }
     return true;
   }
