@@ -38,8 +38,18 @@ function applySlope(start_level, end_level, fraction) {
   return start_level + ((end_level - start_level) * fraction);
 }
 
+export function assignAttributesFromEnum(target, source, enumeration) {
+  for (const key in enumeration) {
+    const enumeratedKey = enumeration[key];
+    if (source.hasOwnProperty(enumeratedKey)) {
+      target[enumeratedKey] = source[enumeratedKey];
+    }
+  }
+}
+
 class Gain {
   constructor() {
+    this.stored_params = {};
     this.reset();
   }
 
@@ -133,7 +143,8 @@ class Gain {
 
   set(params) {
     this.reset();
-    this.params = params;
+    assignAttributesFromEnum(this.stored_params, params, ADSR);
+    this.params = this.stored_params;
     this.setInitialState();
   }
 }
