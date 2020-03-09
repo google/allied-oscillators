@@ -18,12 +18,55 @@ import { midi } from './midiutils.mjs';
 import { adsr } from './adsr.mjs';
 import { polyphony } from './polyphony.mjs';
 
-const params_for_controls = Object.freeze({
-  [73] : adsr.attack,
-  [75] : adsr.decay,
-  [79] : adsr.sustain,
-  [72] : adsr.release
+const op = Object.freeze({
+  'frequency' : 'frequency',
+  'level'     : 'level',
+  'feedback'  : 'feedback',
+  'I'         : 'I',
 });
+
+const param_for_offset = Object.freeze({
+  [0] : adsr.release,
+  [1] : adsr.attack,
+  [2] : op.frequency,
+  [3] : adsr.decay,
+  [4] : op.level,
+  [5] : op.feedback,
+  [7] : adsr.sustain,
+});
+
+const param_bases = Object.freeze([
+  72, 82, 92, 102
+]);
+
+function operator_for_control(control) {
+  if (control < param_bases[0])
+    return None;
+
+  let operator = param_bases. length - 1;
+
+  while (operator > 0 &&
+    param_bases[operator] > control) {
+    operator--;
+  }
+
+  if (operator != 0) {
+    // we have only one voice right now
+    return None;
+  }
+
+  return operator;
+}
+
+function param_for_control(operator, control) {
+  const param_offset = control - param_bases[operator];
+
+  if (!(param_offset in param_for_offset))
+    return None;
+
+  return param_for_offset[param_offset];
+}
+
 
 const durationUnit = sampleRate / 127;
 const nonlinearFactor = 1.02;
@@ -132,15 +175,18 @@ class FMVST extends AudioWorkletProcessor {
   }
 
   handleControl(control, value) {
+    const operator =  operator_for_control(control);
+    if (operator === null)
+      return;
+
+    const param = param_for_control(operator, control);
+    if (param === null)
+      return;
+
     if (value < 0)
       value = 0;
     if (value > 127)
       value = 127;
-
-    if (!(control in params_for_controls))
-      return;
-
-    const param = params_for_controls[control];
 
     switch (param) {
       case adsr.attack:
